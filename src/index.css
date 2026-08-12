@@ -94,3 +94,9 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-brand-purple-border);
 }
+
+/* Safe Area Inset Support */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+

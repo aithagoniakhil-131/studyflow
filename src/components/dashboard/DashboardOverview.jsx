@@ -14,7 +14,7 @@ export default function DashboardOverview({
       label: 'Daily Progress',
       value: `${progressPct}%`,
       icon: <Target className="w-4 h-4 text-brand-purple" />,
-      colorClass: 'text-brand-purple'
+      colorClass: 'text-brand-purple-hover'
     },
     {
       label: 'Tasks Completed',
@@ -43,15 +43,20 @@ export default function DashboardOverview({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      {cards.map((card) => (
-        <Card key={card.label} className="border border-border-card/40 bg-bg-card/50">
-          <CardBody className="p-4 flex flex-col justify-between h-24">
-            <div className="flex items-center justify-between text-[10px] font-bold text-text-muted uppercase tracking-wider">
-              <span>{card.label}</span>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+      {cards.map((card, idx) => (
+        <Card 
+          key={card.label} 
+          className={`border border-border-card/40 bg-zinc-950/60 rounded-2xl shadow-sm ${
+            idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+          }`}
+        >
+          <CardBody className="p-3 sm:p-4 flex flex-col justify-between h-20 sm:h-24 text-left">
+            <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider">
+              <span className="truncate pr-1">{card.label}</span>
               {card.icon}
             </div>
-            <div className={`text-xl md:text-2xl font-extrabold tracking-tight font-display ${card.colorClass}`}>
+            <div className={`text-base sm:text-xl md:text-2xl font-black tracking-tight font-display ${card.colorClass}`}>
               {card.value}
             </div>
           </CardBody>

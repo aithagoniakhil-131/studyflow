@@ -314,8 +314,8 @@ export default function Dashboard() {
         onToggleComplete={handleToggleComplete} 
       />
 
-      {/* Primary Dashboard columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Desktop 2-Column Layout (>= lg) */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (col-span 7 or 8 on large screens) */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6 text-left">
           {/* Today's Focus Widget */}
@@ -332,7 +332,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Right Column (col-span 4 or 5 on large screens) */}
+        {/* Right Column (col-span 5 or 4 on large screens) */}
         <div className="lg:col-span-5 xl:col-span-4 space-y-6 text-left">
           {/* Dedicated Focus Session Hub */}
           <DashboardFocusCard 
@@ -359,6 +359,47 @@ export default function Dashboard() {
           {/* Quick Actions (Focus Timer / Add Exam shortcuts) */}
           <QuickActions />
         </div>
+      </div>
+
+      {/* Mobile Stack Layout (< lg) */}
+      <div className="lg:hidden space-y-5 text-left">
+        {/* 1. Today's Focus */}
+        <TaskFocusList 
+          tasks={tasks.filter(t => t.due_date === todayStr)}
+          onToggleComplete={handleToggleComplete}
+          onStartFocus={handleStartFocus}
+        />
+
+        {/* 2. Focus Session Hub (Prominent full-width on mobile) */}
+        <DashboardFocusCard 
+          studyTimeStr={studyTimeText}
+          streak={streak}
+          currentLevel={levelInfo.currentLevel}
+        />
+
+        {/* 3. Motivation Card */}
+        <MotivationCard />
+
+        {/* 4. Weekly Study Graph */}
+        <WeeklyStudyChart 
+          chartData={weeklyHoursData}
+          onStartFocus={handleStartGeneralFocus}
+        />
+
+        {/* 5. Upcoming Deadlines & Exams */}
+        <UpcomingPanel 
+          exams={upcomingExamsList}
+          tasks={upcomingDeadlinesList}
+        />
+
+        {/* 6. Discipline Score Card */}
+        <DisciplineCard 
+          disciplineScore={discipline.score}
+          activityHistory={activityHistory}
+        />
+
+        {/* 7. Quick Actions */}
+        <QuickActions />
       </div>
     </div>
   );

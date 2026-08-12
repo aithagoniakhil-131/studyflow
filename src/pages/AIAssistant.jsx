@@ -271,7 +271,7 @@ export default function AIAssistant() {
       {/* Academic Context & Study Mode Row */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Context Fields */}
-        <div className="md:col-span-6 grid grid-cols-2 gap-3 bg-zinc-950/60 border border-border-card/40 p-3.5 rounded-2xl">
+        <div className="md:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-950/60 border border-border-card/40 p-3.5 rounded-2xl">
           <div className="space-y-1">
             <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">
               Subject
@@ -299,7 +299,7 @@ export default function AIAssistant() {
           </div>
 
           {currentTaskTitle && (
-            <div className="col-span-2 pt-1 border-t border-border-card/20 flex items-center justify-between text-[10px] text-text-muted">
+            <div className="col-span-1 sm:col-span-2 pt-1 border-t border-border-card/20 flex items-center justify-between text-[10px] text-text-muted">
               <span className="truncate">Task Objective: <strong className="text-text-primary">{currentTaskTitle}</strong></span>
               <button 
                 onClick={() => setCurrentTaskTitle('')} 
@@ -311,12 +311,12 @@ export default function AIAssistant() {
           )}
         </div>
 
-        {/* Study Mode Selector */}
+        {/* Study Mode Selector (2x2 grid on mobile, 4 columns on sm+) */}
         <div className="md:col-span-6 space-y-1 bg-zinc-950/60 border border-border-card/40 p-3.5 rounded-2xl flex flex-col justify-between">
           <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider block">
             Response Mode
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { id: STUDY_MODES.EXPLAIN, label: 'Explain', icon: BookOpen },
               { id: STUDY_MODES.QUIZ, label: 'Quiz', icon: HelpCircle },
@@ -329,13 +329,13 @@ export default function AIAssistant() {
                 <button
                   key={m.id}
                   onClick={() => setMode(m.id)}
-                  className={`py-2 px-1 rounded-xl text-xs font-extrabold flex flex-col items-center gap-1 border transition-all cursor-pointer hover:scale-[1.03] active:scale-[0.97] motion-reduce:transition-none ${
+                  className={`py-2 px-2 rounded-xl text-xs font-extrabold flex flex-col items-center gap-1 border transition-all cursor-pointer min-h-[48px] justify-center hover:scale-[1.03] active:scale-[0.97] motion-reduce:transition-none ${
                     isSelected
                       ? 'bg-brand-purple-bg border-brand-purple/70 text-brand-purple-hover shadow-md shadow-brand-purple/20 ring-1 ring-brand-purple/40'
                       : 'bg-zinc-900/80 border-border-card/40 text-text-muted hover:border-border-card hover:text-text-primary'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-4 h-4" />
                   <span className="text-[10px] uppercase tracking-wider">{m.label}</span>
                 </button>
               );

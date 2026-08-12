@@ -10,6 +10,8 @@ import {
   Target, FileText, Library, BarChart3, Compass, Settings, 
   LogOut, Bot, Bell, Search, X, Volume2, VolumeX
 } from 'lucide-react';
+import MobileBottomNav from './navigation/MobileBottomNav';
+import MobileMoreSheet from './navigation/MobileMoreSheet';
 
 export default function DashboardShell({ children }) {
   const { user, profile, logout } = useAuth();
@@ -19,15 +21,14 @@ export default function DashboardShell({ children }) {
   const location = useLocation();
 
   const dateStr = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric'
   });
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
 
   // Fetch notifications
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function DashboardShell({ children }) {
     const path = location.pathname;
     if (path === '/dashboard') {
       const hours = new Date().getHours();
-      const name = profile?.name || 'Student';
+      const name = profile?.name ? profile.name.split(' ')[0] : 'Student';
       let greeting = 'Good morning';
       if (hours >= 12 && hours < 17) {
         greeting = 'Good afternoon';
@@ -126,13 +127,12 @@ export default function DashboardShell({ children }) {
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary flex">
-      {/* Sidebar Component for Desktop */}
+      {/* Sidebar Component for Desktop (preserved at md/lg) */}
       <aside className="w-64 bg-bg-sidebar border-r border-border-card hidden md:flex flex-col flex-shrink-0">
         {/* Sidebar Header */}
         <div className="p-6 border-b border-border-card/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Logo shape: stylized SF book badge */}
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-purple to-cyan-400 flex items-center justify-center font-bold text-bg-base text-lg font-display">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-purple to-cyan-400 flex items-center justify-center font-bold text-bg-base text-lg font-display shadow-md shadow-brand-purple/20">
               S
             </div>
             <span className="font-display font-extrabold text-xl tracking-wide bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
@@ -203,21 +203,26 @@ export default function DashboardShell({ children }) {
 
       {/* Main Panel Content Container */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* Topbar Component */}
-        <header className="h-20 bg-bg-base/80 backdrop-blur-md border-b border-border-card/40 flex items-center justify-between px-6 z-30 sticky top-0">
-          {/* Left panel: Welcome statement */}
-          <div className="text-left">
-            <h2 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">
-              {getHeaderTitle()}
-            </h2>
-            <p className="text-xs text-text-muted mt-0.5 font-medium hidden sm:block">
-              {dateStr}
-            </p>
+        {/* Topbar Component with Responsive Mobile Header */}
+        <header className="h-16 md:h-20 bg-bg-base/85 backdrop-blur-md border-b border-border-card/40 flex items-center justify-between px-4 sm:px-6 z-30 sticky top-0">
+          {/* Left panel: Logo badge on mobile / Welcome statement on desktop */}
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-purple to-cyan-400 flex md:hidden items-center justify-center font-bold text-bg-base text-sm font-display flex-shrink-0 shadow-sm shadow-brand-purple/20">
+              S
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base md:text-xl font-bold tracking-tight text-text-primary truncate max-w-[200px] sm:max-w-none">
+                {getHeaderTitle()}
+              </h2>
+              <p className="text-[10px] sm:text-xs text-text-muted font-medium hidden sm:block">
+                {dateStr}
+              </p>
+            </div>
           </div>
 
           {/* Right panel: Search, Notifications, Avatar */}
-          <div className="flex items-center gap-4">
-            {/* Search inputs */}
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            {/* Search input on desktop */}
             <div className="relative max-w-xs w-full hidden md:block">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
                 <Search className="w-4 h-4" />
@@ -229,15 +234,16 @@ export default function DashboardShell({ children }) {
               />
             </div>
 
-            {/* Notification triggers */}
+            {/* Notification trigger */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
-                className="p-2 rounded-lg border border-border-card bg-zinc-900/30 hover:bg-zinc-900/60 hover:text-brand-purple text-text-primary transition-all relative cursor-pointer"
+                className="p-2 min-w-[40px] min-h-[40px] rounded-xl border border-border-card/60 bg-zinc-900/40 hover:bg-zinc-900/70 hover:text-brand-purple text-text-primary transition-all relative cursor-pointer active:scale-95 flex items-center justify-center"
+                aria-label="View notifications"
               >
-                <Bell className="w-4.5 h-4.5" />
+                <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-purple text-bg-base rounded-full flex items-center justify-center font-bold text-[10px] border border-bg-base">
+                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-brand-purple text-bg-base rounded-full flex items-center justify-center font-bold text-[9px] border border-bg-base shadow-sm">
                     {unreadCount}
                   </span>
                 )}
@@ -245,12 +251,13 @@ export default function DashboardShell({ children }) {
 
               {/* Notification Overlay List */}
               {showNotifPanel && (
-                <div className="absolute right-0 mt-3 w-80 bg-bg-card border border-border-card rounded-xl shadow-2xl p-4 z-40 space-y-3 glass-panel">
+                <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-zinc-950 border border-border-card/70 rounded-2xl shadow-2xl p-4 z-40 space-y-3 glass-panel animate-in fade-in zoom-in-95 duration-150">
                   <div className="flex items-center justify-between border-b border-border-card/40 pb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Notifications</span>
                     <button 
                       onClick={() => setShowNotifPanel(false)}
-                      className="text-text-muted hover:text-text-primary cursor-pointer"
+                      className="text-text-muted hover:text-text-primary cursor-pointer p-1"
+                      aria-label="Close notifications"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -262,7 +269,7 @@ export default function DashboardShell({ children }) {
                       notifications.map(notif => (
                         <div 
                           key={notif.id} 
-                          className={`p-3 rounded-lg border text-xs relative group ${
+                          className={`p-3 rounded-xl border text-xs relative group ${
                             notif.read 
                               ? 'bg-zinc-900/20 border-border-card/30 text-text-muted' 
                               : 'bg-brand-purple-bg border-brand-purple/20 text-text-primary'
@@ -295,12 +302,13 @@ export default function DashboardShell({ children }) {
               )}
             </div>
 
-            {/* Profile Avatar redirects */}
+            {/* Profile Avatar */}
             <div 
               onClick={() => navigate('/profile')}
-              className="flex items-center gap-2 cursor-pointer group"
+              className="flex items-center gap-2 cursor-pointer group p-1 rounded-xl transition-all active:scale-95 min-h-[40px]"
+              aria-label="Open profile"
             >
-              <div className="w-8 h-8 rounded-full border border-border-card bg-zinc-900 overflow-hidden flex items-center justify-center font-bold text-xs text-brand-purple uppercase bg-brand-purple-bg group-hover:border-brand-purple transition-all">
+              <div className="w-8 h-8 rounded-full border border-border-card/60 bg-zinc-900 overflow-hidden flex items-center justify-center font-bold text-xs text-brand-purple uppercase bg-brand-purple-bg group-hover:border-brand-purple transition-all shadow-sm">
                 {profile?.name ? profile.name.slice(0, 2) : 'ST'}
               </div>
               <div className="hidden lg:block text-left">
@@ -315,11 +323,23 @@ export default function DashboardShell({ children }) {
           </div>
         </header>
 
-        {/* Content Outlet Box */}
-        <main className="flex-1 p-6 relative">
+        {/* Content Outlet Box (with safe padding above mobile bottom nav) */}
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 pb-28 md:pb-6 relative max-w-full overflow-x-hidden">
           {children}
         </main>
       </div>
+
+      {/* Fixed Mobile Bottom Navigation Bar (< 768px) */}
+      <MobileBottomNav onOpenMore={() => setShowMoreSheet(true)} />
+
+      {/* Mobile More Features Bottom Sheet */}
+      <MobileMoreSheet 
+        isOpen={showMoreSheet} 
+        onClose={() => setShowMoreSheet(false)}
+        settings={settings}
+        onToggleMute={toggleMute}
+        onLogout={handleLogout}
+      />
     </div>
   );
 }
