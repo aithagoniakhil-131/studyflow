@@ -51,16 +51,17 @@ export const aiService = {
     prompt, 
     context = {}, 
     mode = STUDY_MODES.EXPLAIN, 
-    provider = AI_PROVIDERS.GEMINI 
+    provider = AI_PROVIDERS.GEMINI,
+    attachments = []
   }) => {
     const { subject = '', topic = '', taskTitle = '' } = context;
 
-    // Validate prompt input
-    if (!prompt || !prompt.trim()) {
+    // Validate prompt input or attachment presence
+    if ((!prompt || !prompt.trim()) && (!attachments || attachments.length === 0)) {
       return {
         success: false,
         status: 'error',
-        message: 'Please enter a valid study query or topic.'
+        message: 'Please enter a valid study query or attach study material.'
       };
     }
 
@@ -72,7 +73,8 @@ export const aiService = {
           prompt,
           context: { subject, topic, taskTitle },
           mode,
-          provider
+          provider,
+          attachments
         })
       });
 

@@ -10,9 +10,11 @@ import { Button } from '../components/ui/Button';
 import { 
   Bot, Sparkles, BookOpen, HelpCircle, FileText, 
   Send, AlertCircle, ArrowRight, Layers, Timer, User, 
-  RotateCcw, Copy, Check, Lightbulb, Zap, ShieldAlert
+  RotateCcw, Copy, Check, Lightbulb, Zap, ShieldAlert,
+  Paperclip, Image as ImageIcon, File, X, Film, FileCode
 } from 'lucide-react';
 import AcademicMarkdown from '../components/ai/AcademicMarkdown';
+import AIErrorBoundary from '../components/ai/AIErrorBoundary';
 
 export default function AIAssistant() {
   const { user } = useAuth();
@@ -34,8 +36,10 @@ export default function AIAssistant() {
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
+  const [attachments, setAttachments] = useState([]);
 
   const chatEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (initialSubject && !subject) setSubject(initialSubject);
@@ -64,15 +68,63 @@ export default function AIAssistant() {
     { label: 'Give IIT-level practice', template: 'Give me a challenging, competitive exam level practice problem on this topic with step-by-step guidance.', forcedMode: STUDY_MODES.PRACTICE }
   ];
 
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      // 10MB limit per file
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds 10MB limit.`);
+        return;
+      }
+
+      const isImage = file.type.startsWith('image/');
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const base64Data = reader.result;
+        setAttachments(prev => [
+          ...prev,
+          {
+            id: Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+            name: file.name,
+            size: file.size,
+            mimeType: file.type || 'application/octet-stream',
+            base64Data,
+            isImage
+          }
+        ]);
+        toast.success(`Attached ${file.name}`);
+      };
+
+      reader.onerror = () => {
+        toast.error(`Failed to read file "${file.name}"`);
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (id) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
   const handleSend = async (overridePrompt, overrideMode) => {
     const queryText = (overridePrompt || prompt).trim();
-    if (!queryText) {
-      toast.error('Please enter a question or study topic.');
+    if (!queryText && attachments.length === 0) {
+      toast.error('Please enter a question or attach study material.');
       return;
     }
 
     const activeSelectedMode = overrideMode || mode;
+    const currentAttachments = [...attachments];
     const userMsgId = Date.now().toString();
+
     const userMsg = {
       id: userMsgId,
       role: 'user',
@@ -80,11 +132,13 @@ export default function AIAssistant() {
       mode: activeSelectedMode,
       subject,
       topic,
+      attachments: currentAttachments,
       timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMsg]);
     setPrompt('');
+    setAttachments([]);
     setLoading(true);
 
     try {
@@ -92,7 +146,8 @@ export default function AIAssistant() {
         prompt: queryText,
         context: { subject, topic, taskTitle: currentTaskTitle },
         mode: activeSelectedMode,
-        provider: AI_PROVIDERS.GEMINI
+        provider: AI_PROVIDERS.GEMINI,
+        attachments: currentAttachments
       });
 
       // Play audio feedback if sound enabled
@@ -142,14 +197,18 @@ export default function AIAssistant() {
   };
 
   const handleCopy = (text, id) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    toast.success('Copied to clipboard');
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      const plainText = typeof text === 'string' ? text : JSON.stringify(text);
+      navigator.clipboard.writeText(plainText);
+      setCopiedId(id);
+      toast.success('Answer copied to clipboard');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {}
   };
 
   const handleClearSession = () => {
     setMessages([]);
+    setAttachments([]);
     toast.info('Session cleared');
   };
 
@@ -291,51 +350,90 @@ export default function AIAssistant() {
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               {msg.role === 'user' ? (
-                <div className="max-w-xl bg-brand-purple-bg/80 border border-brand-purple/40 text-white rounded-2xl p-4 shadow-md space-y-1.5">
+                <div className="max-w-xl bg-brand-purple-bg/80 border border-brand-purple/40 text-white rounded-2xl p-4 shadow-md space-y-2">
                   <div className="flex items-center justify-between text-[9px] font-extrabold uppercase tracking-wider text-brand-purple-hover gap-3">
                     <span className="flex items-center gap-1"><User className="w-3 h-3" /> You ({msg.mode})</span>
                     {msg.subject && <span className="opacity-80 font-mono">{msg.subject}</span>}
                   </div>
-                  <p className="text-xs font-medium whitespace-pre-wrap">{msg.content}</p>
+
+                  {/* Render attached files in user bubble */}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 py-1">
+                      {msg.attachments.map(att => (
+                        <div key={att.id} className="flex items-center gap-1.5 bg-zinc-900/90 border border-brand-purple/30 rounded-lg px-2 py-1 text-[10px]">
+                          {att.isImage ? (
+                            <img src={att.base64Data} alt={att.name} className="w-4 h-4 object-cover rounded" />
+                          ) : (
+                            <File className="w-3 h-3 text-brand-purple-hover" />
+                          )}
+                          <span className="truncate max-w-[120px]">{att.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {msg.content && <p className="text-xs font-medium whitespace-pre-wrap">{msg.content}</p>}
                 </div>
               ) : (
-                <Card className="w-full border border-border-card/40 bg-zinc-950/80 rounded-2xl overflow-hidden shadow-xl">
-                  <CardHeader className="bg-zinc-900/50 border-b border-border-card/25 p-3 px-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-brand-purple-hover" />
-                      <span className="text-xs font-black uppercase tracking-wider text-text-primary font-display">
-                        StudyFlow Tutor
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-extrabold text-text-muted bg-zinc-900 px-2 py-0.5 rounded border border-border-card/30 uppercase tracking-wider">
-                        {msg.mode}
-                      </span>
-                      <button
-                        onClick={() => handleCopy(msg.content, msg.id)}
-                        className="p-1 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                        title="Copy response"
-                      >
-                        {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardBody className="p-5 text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-sans">
-                    {msg.status === 'unconfigured' ? (
-                      <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-4 text-amber-200 space-y-2.5">
-                        <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-                          <AlertCircle className="w-4 h-4" />
-                          <span>AI Provider Configuration Required</span>
-                        </div>
-                        <p className="text-[11px] text-amber-200/90">
-                          {msg.content}
-                        </p>
+                <AIErrorBoundary>
+                  <Card className="w-full border border-border-card/40 bg-zinc-950/80 rounded-2xl overflow-hidden shadow-xl">
+                    <CardHeader className="bg-zinc-900/50 border-b border-border-card/25 p-3 px-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-brand-purple-hover" />
+                        <span className="text-xs font-black uppercase tracking-wider text-text-primary font-display">
+                          StudyFlow Tutor
+                        </span>
                       </div>
-                    ) : (
-                      <AcademicMarkdown content={msg.content} />
-                    )}
-                  </CardBody>
-                </Card>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-extrabold text-text-muted bg-zinc-900 px-2 py-0.5 rounded border border-border-card/30 uppercase tracking-wider">
+                          {msg.mode}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(msg.content, msg.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 border border-border-card/60 hover:border-brand-purple/40 text-text-muted hover:text-text-primary text-[10px] font-bold transition-all cursor-pointer hover:scale-102 active:scale-98"
+                          title="Copy complete answer text"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-400 font-extrabold">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Answer</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </CardHeader>
+                    <CardBody className="p-5 text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-sans">
+                      {msg.status === 'unconfigured' ? (
+                        <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-4 text-amber-200 space-y-2.5">
+                          <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>AI Provider Configuration Required</span>
+                          </div>
+                          <p className="text-[11px] text-amber-200/90">
+                            {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
+                          </p>
+                        </div>
+                      ) : msg.status === 'temporary_unavailable' ? (
+                        <div className="bg-zinc-900/80 border border-brand-purple/30 rounded-xl p-4 text-text-primary space-y-2">
+                          <div className="flex items-center gap-2 text-brand-purple-hover font-extrabold text-xs">
+                            <Sparkles className="w-4 h-4" />
+                            <span>StudyFlow AI is temporarily busy</span>
+                          </div>
+                          <p className="text-[11px] text-text-muted">
+                            {typeof msg.content === 'string' ? msg.content : 'Please try again in a moment.'}
+                          </p>
+                        </div>
+                      ) : (
+                        <AcademicMarkdown content={msg.content} />
+                      )}
+                    </CardBody>
+                  </Card>
+                </AIErrorBoundary>
               )}
             </div>
           ))}
@@ -348,22 +446,60 @@ export default function AIAssistant() {
         <Card className="w-full border border-brand-purple/30 bg-zinc-950/60 rounded-2xl p-4 animate-pulse">
           <div className="flex items-center gap-3 text-brand-purple-hover text-xs font-bold">
             <div className="w-4 h-4 rounded-full border-2 border-brand-purple-hover border-t-transparent animate-spin" />
-            <span>StudyFlow AI is thinking & formulating structured academic breakdown...</span>
+            <span>StudyFlow AI is analyzing material & formulating structured breakdown...</span>
           </div>
         </Card>
       )}
 
-      {/* Query Input Box & Shortcuts */}
+      {/* Query Input Box, File Attachments & Shortcuts */}
       <Card className="border border-border-card/50 bg-zinc-950/90 rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
         <CardBody className="p-4 space-y-3">
+          {/* File Attachment Strip */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-2 bg-zinc-900/60 border border-border-card/40 rounded-xl">
+              {attachments.map(att => (
+                <div key={att.id} className="flex items-center gap-1.5 bg-zinc-950 border border-brand-purple/40 rounded-lg p-1.5 pr-2 text-xs">
+                  {att.isImage ? (
+                    <img src={att.base64Data} alt={att.name} className="w-6 h-6 object-cover rounded border border-border-card/60" />
+                  ) : (
+                    <div className="w-6 h-6 rounded bg-zinc-900 flex items-center justify-center text-brand-purple-hover">
+                      <File className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <div className="leading-tight max-w-[140px]">
+                    <div className="text-[10px] font-bold text-text-primary truncate">{att.name}</div>
+                    <div className="text-[8px] text-text-muted">{(att.size / 1024).toFixed(1)} KB</div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    className="p-1 hover:text-rose-400 text-text-muted rounded cursor-pointer transition-colors ml-1"
+                    title="Remove attachment"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={3}
             disabled={loading}
-            placeholder="Ask anything about your topic... (Enter to send, Shift+Enter for new line)"
+            placeholder="Ask anything about your topic or attach notes/diagrams... (Enter to send, Shift+Enter for new line)"
             className="w-full bg-zinc-900/70 border border-border-card/60 rounded-xl p-3 text-xs text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-brand-purple resize-none disabled:opacity-50"
+          />
+
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            multiple
+            accept="image/*,.pdf,text/*,.py,.js,.cpp,.c,.java,.txt,.md"
+            className="hidden"
           />
 
           <div className="space-y-2.5 pt-1">
@@ -387,15 +523,28 @@ export default function AIAssistant() {
               ))}
             </div>
 
-            {/* Bottom Actions Row */}
+            {/* Bottom Actions Row: Attachments + Send */}
             <div className="flex items-center justify-between border-t border-border-card/25 pt-3">
-              <div className="text-[10px] text-text-muted">
-                Mode: <strong className="text-brand-purple-hover font-mono">{mode}</strong>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-border-card/50 hover:border-brand-purple/50 text-text-muted hover:text-text-primary text-[10px] font-bold transition-all cursor-pointer hover:scale-102 active:scale-98 disabled:opacity-50"
+                  title="Attach diagrams, images, notes or code"
+                >
+                  <Paperclip className="w-3.5 h-3.5 text-brand-purple-hover" />
+                  <span>Attach Media / Files</span>
+                </button>
+
+                <div className="text-[10px] text-text-muted hidden sm:block">
+                  Mode: <strong className="text-brand-purple-hover font-mono">{mode}</strong>
+                </div>
               </div>
 
               <Button
                 onClick={() => handleSend()}
-                disabled={loading || !prompt.trim()}
+                disabled={loading || (!prompt.trim() && attachments.length === 0)}
                 className="bg-brand-purple hover:bg-brand-purple-hover text-white text-xs font-extrabold py-2 px-5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/25 cursor-pointer hover:scale-102 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (

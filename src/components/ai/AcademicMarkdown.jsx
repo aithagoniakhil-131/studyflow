@@ -1,36 +1,42 @@
 import React, { useState } from 'react';
 import katex from 'katex';
-import { Copy, Check, Code2, Terminal, Lightbulb, AlertTriangle, HelpCircle, BookOpen } from 'lucide-react';
+import { Copy, Check, Terminal, Lightbulb, AlertTriangle, HelpCircle, BookOpen, Sparkles } from 'lucide-react';
 
 export default function AcademicMarkdown({ content = '' }) {
-  if (!content) return null;
+  // Safe string coercion
+  const textContent = typeof content === 'string' ? content : String(content || '');
+  if (!textContent.trim()) return null;
 
-  // Render LaTeX math safely
+  // Render LaTeX math safely without throwing exceptions
   const renderMath = (mathStr, displayMode = false) => {
+    if (!mathStr || typeof mathStr !== 'string') return null;
+    const cleanMath = mathStr.trim();
+    if (!cleanMath) return null;
+
     try {
-      return (
-        <span
-          dangerouslySetInnerHTML={{
-            __html: katex.renderToString(mathStr, {
-              displayMode,
-              throwOnError: false,
-              output: 'htmlAndMathml'
-            })
-          }}
-        />
-      );
-    } catch (e) {
-      return <code className="text-rose-400 font-mono text-xs">{mathStr}</code>;
+      const html = katex.renderToString(cleanMath, {
+        displayMode,
+        throwOnError: false,
+        output: 'html' // Use pure HTML for maximum stability across all browsers
+      });
+      return <span dangerouslySetInnerHTML={{ __html: html }} />;
+    } catch (err) {
+      console.warn('KaTeX rendering fallback for:', cleanMath, err);
+      return <code className="text-brand-purple-hover font-mono text-[11px] px-1 bg-zinc-900 rounded">{cleanMath}</code>;
     }
   };
 
-  // Split text into display math, code blocks, and regular markdown paragraphs
+  // Robust block parser handling code blocks, multiline display math, and text
   const parseBlocks = (text) => {
     const blocks = [];
     const lines = text.split('\n');
     let inCodeBlock = false;
     let codeLanguage = '';
     let codeBuffer = [];
+
+    let inDisplayMath = false;
+    let mathBuffer = [];
+
     let textBuffer = [];
 
     const flushText = () => {
@@ -42,13 +48,14 @@ export default function AcademicMarkdown({ content = '' }) {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const trimmed = line.trim();
 
-      // Code block start/end
-      if (line.trim().startsWith('```')) {
+      // 1. Code block delimiter ```
+      if (trimmed.startsWith('```')) {
         if (!inCodeBlock) {
           flushText();
           inCodeBlock = true;
-          codeLanguage = line.trim().replace(/^```/, '').trim() || 'text';
+          codeLanguage = trimmed.replace(/^```/, '').trim() || 'code';
           codeBuffer = [];
         } else {
           inCodeBlock = false;
@@ -67,62 +74,103 @@ export default function AcademicMarkdown({ content = '' }) {
         continue;
       }
 
-      // Display math \[ ... \]
-      if (line.trim().startsWith('\\[') && line.trim().endsWith('\\]')) {
-        flushText();
-        const mathContent = line.trim().replace(/^\\\[/, '').replace(/\\\]$/, '').trim();
-        blocks.push({ type: 'display_math', math: mathContent });
+      // 2. Display math start \[ or $$ on its own line
+      if (trimmed === '\\[' || trimmed === '$$') {
+        if (!inDisplayMath) {
+          flushText();
+          inDisplayMath = true;
+          mathBuffer = [];
+          continue;
+        }
+      }
+
+      // Display math end \] or $$ on its own line
+      if (inDisplayMath && (trimmed === '\\]' || trimmed === '$$')) {
+        inDisplayMath = false;
+        blocks.push({
+          type: 'display_math',
+          math: mathBuffer.join('\n')
+        });
+        mathBuffer = [];
         continue;
       }
 
+      if (inDisplayMath) {
+        mathBuffer.push(line);
+        continue;
+      }
+
+      // 3. Single-line display math \[ ... \] or $$ ... $$
+      if ((trimmed.startsWith('\\[') && trimmed.endsWith('\\]')) || 
+          (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length > 4)) {
+        flushText();
+        const clean = trimmed
+          .replace(/^\\\[/, '').replace(/\\\]$/, '')
+          .replace(/^\$\$/, '').replace(/\$\$$/, '')
+          .trim();
+        blocks.push({ type: 'display_math', math: clean });
+        continue;
+      }
+
+      // Regular line
       textBuffer.push(line);
     }
 
     if (inCodeBlock && codeBuffer.length > 0) {
       blocks.push({ type: 'code', language: codeLanguage, code: codeBuffer.join('\n') });
     }
+    if (inDisplayMath && mathBuffer.length > 0) {
+      blocks.push({ type: 'display_math', math: mathBuffer.join('\n') });
+    }
     flushText();
 
     return blocks;
   };
 
-  const blocks = parseBlocks(content);
+  try {
+    const blocks = parseBlocks(textContent);
 
-  return (
-    <div className="space-y-4 text-xs leading-relaxed text-text-primary">
-      {blocks.map((block, idx) => {
-        if (block.type === 'code') {
-          return <CodeBlock key={idx} language={block.language} code={block.code} />;
-        }
-        if (block.type === 'display_math') {
-          return (
-            <div
-              key={idx}
-              className="my-3 py-3 px-4 bg-zinc-900/80 border border-brand-purple/25 rounded-xl flex items-center justify-center overflow-x-auto text-sm text-text-primary shadow-inner"
-            >
-              {renderMath(block.math, true)}
-            </div>
-          );
-        }
-        return <FormattedParagraph key={idx} text={block.content} renderMath={renderMath} />;
-      })}
-    </div>
-  );
+    return (
+      <div className="space-y-3.5 text-xs leading-relaxed text-text-primary">
+        {blocks.map((block, idx) => {
+          if (block.type === 'code') {
+            return <CodeBlock key={idx} language={block.language} code={block.code} />;
+          }
+          if (block.type === 'display_math') {
+            return (
+              <div
+                key={idx}
+                className="my-3 py-3 px-4 bg-zinc-900/90 border border-brand-purple/30 rounded-xl flex items-center justify-center overflow-x-auto text-sm text-text-primary shadow-inner"
+              >
+                {renderMath(block.math, true)}
+              </div>
+            );
+          }
+          return <FormattedParagraph key={idx} text={block.content} renderMath={renderMath} />;
+        })}
+      </div>
+    );
+  } catch (err) {
+    console.error('AcademicMarkdown parser error:', err);
+    return <p className="whitespace-pre-wrap font-sans text-xs text-text-primary">{textContent}</p>;
+  }
 }
 
 // Code Block with Copy Action
-function CodeBlock({ language, code }) {
+function CodeBlock({ language = 'code', code = '' }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {}
   };
 
   return (
     <div className="my-3 rounded-2xl border border-border-card/60 bg-zinc-950/90 overflow-hidden shadow-md">
-      <div className="bg-zinc-900/70 px-4 py-2 border-b border-border-card/40 flex items-center justify-between text-[11px] text-text-muted">
+      <div className="bg-zinc-900/80 px-4 py-2 border-b border-border-card/40 flex items-center justify-between text-[11px] text-text-muted">
         <div className="flex items-center gap-1.5 font-mono text-[10px] text-brand-purple-hover">
           <Terminal className="w-3.5 h-3.5" />
           <span>{language || 'code'}</span>
@@ -143,21 +191,27 @@ function CodeBlock({ language, code }) {
 }
 
 // Formatted Paragraph with inline LaTeX and Academic Section Badges
-function FormattedParagraph({ text, renderMath }) {
+function FormattedParagraph({ text = '', renderMath }) {
+  if (!text) return null;
   const lines = text.split('\n');
 
   const renderInline = (str) => {
-    // 1. Process inline LaTeX \( ... \)
+    if (!str || typeof str !== 'string') return null;
+
+    // 1. Process inline LaTeX \( ... \) or $ ... $
     const parts = [];
     let lastIndex = 0;
-    const mathRegex = /\\\((.*?)\\\)/g;
+    
+    // Match \(...\) or $...$
+    const mathRegex = /(\\\((.*?)\\\)|\$([^\$]+?)\$)/g;
     let match;
 
     while ((match = mathRegex.exec(str)) !== null) {
       if (match.index > lastIndex) {
         parts.push(str.substring(lastIndex, match.index));
       }
-      parts.push({ isMath: true, math: match[1] });
+      const mathContent = match[2] || match[3] || '';
+      parts.push({ isMath: true, math: mathContent });
       lastIndex = match.index + match[0].length;
     }
     if (lastIndex < str.length) {
@@ -165,19 +219,21 @@ function FormattedParagraph({ text, renderMath }) {
     }
 
     return parts.map((part, i) => {
-      if (typeof part === 'object' && part.isMath) {
+      if (typeof part === 'object' && part?.isMath) {
         return <span key={i} className="inline-block px-0.5">{renderMath(part.math, false)}</span>;
       }
 
+      if (typeof part !== 'string') return null;
+
       // 2. Process bold **text** and inline `code`
-      const rawText = part;
-      const subParts = rawText.split(/(\*\*.*?\*\*|`.*?`)/g);
+      const subParts = part.split(/(\*\*.*?\*\*|`.*?`)/g);
 
       return subParts.map((sub, j) => {
-        if (sub.startsWith('**') && sub.endsWith('**')) {
+        if (!sub) return null;
+        if (sub.startsWith('**') && sub.endsWith('**') && sub.length >= 4) {
           return <strong key={j} className="font-extrabold text-white">{sub.slice(2, -2)}</strong>;
         }
-        if (sub.startsWith('`') && sub.endsWith('`')) {
+        if (sub.startsWith('`') && sub.endsWith('`') && sub.length >= 2) {
           return (
             <code key={j} className="bg-zinc-900 border border-border-card/40 text-brand-purple-hover font-mono px-1.5 py-0.5 rounded text-[11px]">
               {sub.slice(1, -1)}
@@ -196,21 +252,28 @@ function FormattedParagraph({ text, renderMath }) {
         if (!trimmed) return null;
 
         // Structured Academic Section Headers
-        if (trimmed.startsWith('### ')) {
-          const headerText = trimmed.replace(/^###\s*/, '');
+        if (trimmed.startsWith('### ') || trimmed.startsWith('## ')) {
+          const headerText = trimmed.replace(/^###?\s*/, '');
           let icon = <BookOpen className="w-4 h-4 text-brand-purple-hover" />;
           let headerClass = 'text-brand-purple-hover border-brand-purple/30 bg-brand-purple-bg/50';
 
-          if (headerText.toLowerCase().includes('core idea') || headerText.toLowerCase().includes('idea')) {
+          const lower = headerText.toLowerCase();
+          if (lower.includes('core idea') || lower.includes('idea')) {
             icon = <Lightbulb className="w-4 h-4 text-cyan-400" />;
             headerClass = 'text-cyan-300 border-cyan-500/30 bg-cyan-950/30';
-          } else if (headerText.toLowerCase().includes('intuition')) {
+          } else if (lower.includes('intuition')) {
             icon = <Sparkles className="w-4 h-4 text-amber-400" />;
             headerClass = 'text-amber-300 border-amber-500/30 bg-amber-950/30';
-          } else if (headerText.toLowerCase().includes('trap') || headerText.toLowerCase().includes('mistake') || headerText.toLowerCase().includes('pitfall')) {
+          } else if (lower.includes('formal') || lower.includes('definition') || lower.includes('claim')) {
+            icon = <BookOpen className="w-4 h-4 text-indigo-400" />;
+            headerClass = 'text-indigo-300 border-indigo-500/30 bg-indigo-950/30';
+          } else if (lower.includes('why it matters') || lower.includes('matters') || lower.includes('insight')) {
+            icon = <Sparkles className="w-4 h-4 text-purple-400" />;
+            headerClass = 'text-purple-300 border-purple-500/30 bg-purple-950/30';
+          } else if (lower.includes('trap') || lower.includes('mistake') || lower.includes('pitfall')) {
             icon = <AlertTriangle className="w-4 h-4 text-rose-400" />;
             headerClass = 'text-rose-300 border-rose-500/30 bg-rose-950/30';
-          } else if (headerText.toLowerCase().includes('quick check') || headerText.toLowerCase().includes('try this') || headerText.toLowerCase().includes('check')) {
+          } else if (lower.includes('quick check') || lower.includes('try this') || lower.includes('check') || lower.includes('question')) {
             icon = <HelpCircle className="w-4 h-4 text-emerald-400" />;
             headerClass = 'text-emerald-300 border-emerald-500/30 bg-emerald-950/30';
           }

@@ -6,9 +6,11 @@ import aiHandler from './api/ai.js';
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  if (env.GEMINI_API_KEY) {
-    process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
-  }
+  ['GEMINI_API_KEY', 'GEMINI_API_KEY_1', 'GEMINI_API_KEY_2', 'GEMINI_API_KEY_3'].forEach(k => {
+    if (env[k]) {
+      process.env[k] = env[k];
+    }
+  });
 
   return {
     plugins: [
