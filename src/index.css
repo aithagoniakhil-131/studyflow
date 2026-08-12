@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* Theme Colors from Stitch Designs */
+  --color-bg-base: #0F0F12;
+  --color-bg-sidebar: #13131A;
+  --color-bg-card: #171721;
+  --color-border-card: #222230;
+  
+  --color-brand-purple: #9D7BF5;
+  --color-brand-purple-hover: #B094F7;
+  --color-brand-purple-bg: rgba(157, 123, 245, 0.1);
+  --color-brand-purple-border: rgba(157, 123, 245, 0.3);
+  
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #E4E4E7;
+  --color-text-muted: #8C8C9E;
+
+  /* Priority Levels */
+  --color-priority-high: #EF4444;
+  --color-priority-high-bg: #451A1A;
+  --color-priority-high-border: #EF444430;
+  
+  --color-priority-medium: #06B6D4;
+  --color-priority-medium-bg: #0E2B35;
+  --color-priority-medium-border: #06B6D430;
+  
+  --color-priority-low: #8C8C9E;
+  --color-priority-low-bg: #222230;
+  --color-priority-low-border: #8C8C9E30;
+
+  /* Status Colors */
+  --color-status-pending: #FBBF24;
+  --color-status-inprogress: #3B82F6;
+  --color-status-completed: #10B981;
+  --color-status-cancelled: #6B7280;
+}
+
+/* Custom Base Styles */
+@layer base {
+  body {
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    color: var(--color-text-primary);
+  }
+}
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: rgba(23, 23, 33, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-card);
+}
+
+.glass-card {
+  background: rgba(23, 23, 33, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border-card);
+}
+
+/* Webkit Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-card);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-purple-border);
+}
